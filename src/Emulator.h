@@ -1,13 +1,18 @@
 #pragma once
 
+#include <string>
 #include <stdint.h>
 #include <SDL.h>
+
+static const uint32_t MEMORY_SIZE = 4096;
+static const uint16_t START_ADDRESS = 0x200;
 
 class Emulator
 {
     public:
         Emulator();        
-        void run_loop();
+        bool run_loop(uint32_t *pixels, uint32_t width, uint32_t height);
+        void load_file(std::string path);
 
     private:
         bool quit;
@@ -33,7 +38,7 @@ class Emulator
 
         void init();
         void copy_font();
-        void run_tick();
+        void run_tick(uint32_t *pixels, uint32_t width, uint32_t height);
         void run_instruction(uint16_t opcode);
         int16_t check_keys(SDL_Keycode code, bool keyState);
 

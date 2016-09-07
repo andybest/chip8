@@ -2,6 +2,8 @@
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
+#include <iostream>
+#include <fstream>
 #include <SDL.h>
 
 static const uint8_t CHIP8_FONT[] = {
@@ -41,11 +43,12 @@ static const SDL_Keycode keyAssignments[] = {
     SDLK_v      // F
 };
 
+static const SDL_Keycode KEY_QUIT = SDLK_ESCAPE;
+
 Emulator::Emulator()
 {
     init();
 }
-
 
 void Emulator::init()
 {
@@ -61,15 +64,18 @@ void Emulator::copy_font()
     std::memcpy(memory, CHIP8_FONT, 5 * 16);
 }
 
-void Emulator::run_loop()
+void Emulator::load_file(std::string path)
 {
-    while(!quit)
-    {
-        run_tick();
-    }
+    uint32_t maxSize = MEMORY_SIZE - START_ADDRESS;
 }
 
-void Emulator::run_tick()
+bool Emulator::run_loop(uint32_t *pixels, uint32_t width, uint32_t height)
+{
+    run_tick(pixels, width, height);
+    return quit;
+}
+
+void Emulator::run_tick(uint32_t *pixels, uint32_t width, uint32_t height)
 {
     if(delayTimer > 0) {
         --delayTimer;
@@ -79,6 +85,7 @@ void Emulator::run_tick()
         --soundTimer;
     }
 
+
     // Check events
     SDL_Event e;
     while(SDL_PollEvent(&e) != 0)
@@ -86,11 +93,18 @@ void Emulator::run_tick()
         if(e.type == SDL_QUIT)
             quit = true;
         else if(e.type == SDL_KEYDOWN) {
-            int16_t key = check_keys(e.key.keysym.sym, true);
-            if(key > 0 && waiting_for_key)
+            SDL_Keycode keycode = e.key.keysym.sym;
+
+            if(keycode == KEY_QUIT)
             {
-                waiting_for_key = false;
-                V[keyReg] = (uint8_t)key;
+                quit = true;
+            } else {
+                int16_t key = check_keys(keycode, true);
+                if(key > 0 && waiting_for_key)
+                {
+                    waiting_for_key = false;
+                    V[keyReg] = (uint8_t)key;
+                }
             }
         } else if(e.type == SDL_KEYUP) {
             check_keys(e.key.keysym.sym, false);
@@ -102,11 +116,22 @@ void Emulator::run_tick()
         for(int i = 0; i < 256; ++i)
         {
             uint16_t opcode = (memory[pc] << 8) | memory[pc + 1];
+
             ++pc;
             run_instruction(opcode);
 
             if(waiting_for_key)
                 continue;
+        }
+    }
+
+    // Copy screen buffer
+    for(int x = 0; x < 64; ++x)
+    {
+        for(int y = 0; y < 32; ++y)
+        {
+            pixels[x + (y * width)] =
+                (screenBuf[x + (y * 64)] > 0)? 0xFFFFFFFF: 0xFF000000;
         }
     }
 }
